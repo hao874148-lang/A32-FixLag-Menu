@@ -21,16 +21,21 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: 3. Restructure Project & Fix Gradle Errors
+      - name: 3. Restructure Project & Overwrite Gradle Configs
         run: |
-          echo "Đang tạo cấu trúc thư mục chuẩn của Android..."
+          echo "Xóa sạch các file cấu hình Gradle cũ gây lỗi..."
+          rm -f settings.gradle build.gradle gradle.properties local.properties
+          rm -rf gradle/
+          rm -f gradlew gradlew.bat
+          
+          echo "Tạo cấu trúc thư mục chuẩn của Android..."
           mkdir -p app/src/main/java/com/a32/fixlag
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/drawable
           mkdir -p app/src/main/res/mipmap-hdpi
 
-          echo "Đang di chuyển các file nguồn vào đúng vị trí..."
+          echo "Di chuyển các file nguồn vào đúng vị trí..."
           # Di chuyển file Java vào package com.a32.fixlag
           for f in *.java; do
             [ -f "$f" ] && mv "$f" app/src/main/java/com/a32/fixlag/
@@ -45,7 +50,6 @@ jobs:
           for f in *.xml; do
             if [ "$f" == "AndroidManifest.xml" ]; then continue; fi
             if [ -f "$f" ]; then
-              # Phân loại XML vào thư mục res tương ứng
               case "$f" in
                 strings.xml|colors.xml|themes.xml|styles.xml|array.xml|ids.xml|dimens.xml)
                   mv "$f" app/src/main/res/values/
@@ -60,9 +64,8 @@ jobs:
             fi
           done
 
-          echo "Đang ghi đè settings.gradle để loại bỏ lỗi Groovy DSL..."
-          cat <<EOF > settings.gradle
-          pluginManagement {
+          echo "Tạo mới file settings.gradle..."
+          echo 'pluginManagement {
               repositories {
                   google()
                   mavenCentral()
@@ -70,38 +73,50 @@ jobs:
               }
           }
           dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
               repositories {
                   google()
                   mavenCentral()
               }
           }
           rootProject.name = "A32-FixLag-Menu"
-          include ':app'
-          EOF
+          include ":app"' > settings.gradle
 
-          echo "Đang cấu hình lại build.gradle cho App Module..."
-          # Nếu app/build.gradle không tồn tại nhưng có build.gradle ở root, ta chuyển nó vào app/
-          if [ ! -f "app/build.gradle" ] && [ -f "build.gradle" ]; then
-            mv build.gradle app/build.gradle
-          fi
-          
-          # Đảm bảo AGP sử dụng phiên bản 8.1.1 tương thích
-          if [ -f "app/build.gradle" ]; then
-            sed -i 's/com.android.tools.build:gradle:[^ ]*/com.android.tools.build:gradle:8.1.1/' app/build.gradle
-            sed -i 's/id "com.android.application" version "[^"]*"/id "com.android.application" version "8.1.1"/g' app/build.gradle
-          fi
+          echo "Tạo mới file build.gradle (Root)..."
+          echo 'plugins {
+              id "com.android.application" version "8.1.1" apply false
+          }' > build.gradle
 
-          # Tạo root build.gradle nếu nó bị mất hoặc chuyển nhầm
-          if [ ! -f "build.gradle" ]; then
-            cat <<EOF > build.gradle
-          plugins {
-              id 'com.android.application' version '8.1.1' apply false
+          echo "Tạo mới file app/build.gradle..."
+          echo 'plugins {
+              id "com.android.application"
           }
-          EOF
-          fi
+
+          android {
+              namespace "com.a32.fixlag"
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId "com.a32.fixlag"
+                  minSdk 21
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                      proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+                  }
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }' > app/build.gradle
 
       - name: 4. Setup Gradle Wrapper 8.5
-        # Khởi tạo wrapper phiên bản 8.5 tương thích hoàn toàn với AGP 8.1.1
         run: |
           gradle wrapper --gradle-version 8.5
           chmod +x gradlew
