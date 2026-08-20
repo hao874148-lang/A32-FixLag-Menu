@@ -19,11 +19,6 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Gradle 8.5
-      uses: gradle/actions/setup-gradle@v3
-      with:
-        gradle-version: '8.5'
-
     - name: Prepare Android Project Structure & Fix Gradle Files
       run: |
         echo "=== BẮT ĐẦU CẤU TRÚC LẠI DỰ ÁN ANDROID ==="
@@ -60,10 +55,8 @@ jobs:
         [ -f colors.xml ] && mv colors.xml app/src/main/res/values/ || true
         [ -f strings.xml ] && mv strings.xml app/src/main/res/values/ || true
 
-        # 4. Ghi đè file settings.gradle ở Root (Thêm import RepositoriesMode)
+        # 4. Ghi đè file settings.gradle ở Root (Sử dụng đường dẫn Package đầy đủ)
         cat << 'EOF' > settings.gradle
-import org.gradle.api.initialization.resolve.RepositoriesMode
-
 pluginManagement {
     repositories {
         google()
@@ -72,7 +65,7 @@ pluginManagement {
     }
 }
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOSITORIES)
+    repositoriesMode.set(org.gradle.api.initialization.resolve.RepositoriesMode.FAIL_ON_PROJECT_REPOSITORIES)
     repositories {
         google()
         mavenCentral()
@@ -142,8 +135,13 @@ EOF
         echo "=== CẤU TRÚC DỰ ÁN HOÀN THIỆN ==="
         find . -maxdepth 5 -not -path '*/.*'
 
-    - name: Build Debug APK với Gradle 8.5
-      run: gradle assembleDebug --stacktrace
+    - name: Generate Gradle Wrapper 8.5
+      run: |
+        gradle wrapper --gradle-version 8.5
+        chmod +x gradlew
+
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug --stacktrace
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
