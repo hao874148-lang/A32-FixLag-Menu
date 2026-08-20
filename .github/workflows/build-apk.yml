@@ -21,51 +21,42 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: 3. Restructure Project & Overwrite Gradle Configs
+      - name: 3. Setup Gradle 8.5
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.5'
+
+      - name: 4. Restructure Project & Overwrite Gradle Configs
         run: |
-          echo "Xóa sạch các file cấu hình Gradle cũ gây lỗi..."
-          rm -f settings.gradle build.gradle gradle.properties local.properties
-          rm -rf gradle/
-          rm -f gradlew gradlew.bat
-          
-          echo "Tạo cấu trúc thư mục chuẩn của Android..."
-          mkdir -p app/src/main/java/com/a32/fixlag
-          mkdir -p app/src/main/res/values
-          mkdir -p app/src/main/res/layout
-          mkdir -p app/src/main/res/drawable
-          mkdir -p app/src/main/res/mipmap-hdpi
+          python3 << 'PY_SCRIPT'
+          import os, shutil
 
-          echo "Di chuyển các file nguồn vào đúng vị trí..."
-          # Di chuyển file Java vào package com.a32.fixlag
-          for f in *.java; do
-            [ -f "$f" ] && mv "$f" app/src/main/java/com/a32/fixlag/
-          done
+          print("Xóa sạch các file cấu hình Gradle cũ...")
+          for f in ['settings.gradle', 'build.gradle', 'app/build.gradle', 'gradle.properties', 'local.properties']:
+              if os.path.exists(f): os.remove(f)
+          if os.path.exists('.gradle'): shutil.rmtree('.gradle')
 
-          # Di chuyển AndroidManifest.xml
-          if [ -f "AndroidManifest.xml" ]; then
-            mv AndroidManifest.xml app/src/main/
-          fi
+          print("Tạo cấu trúc thư mục chuẩn...")
+          dirs = ['app/src/main/java/com/a32/fixlag', 'app/src/main/res/values', 'app/src/main/res/layout', 'app/src/main/res/drawable', 'app/src/main/res/mipmap-hdpi']
+          for d in dirs: os.makedirs(d, exist_ok=True)
 
-          # Di chuyển các file XML tài nguyên
-          for f in *.xml; do
-            if [ "$f" == "AndroidManifest.xml" ]; then continue; fi
-            if [ -f "$f" ]; then
-              case "$f" in
-                strings.xml|colors.xml|themes.xml|styles.xml|array.xml|ids.xml|dimens.xml)
-                  mv "$f" app/src/main/res/values/
-                  ;;
-                activity_*.xml|fragment_*.xml|item_*.xml|dialog_*.xml|view_*.xml)
-                  mv "$f" app/src/main/res/layout/
-                  ;;
-                *)
-                  mv "$f" app/src/main/res/drawable/
-                  ;;
-              esac
-            fi
-          done
+          print("Di chuyển file nguồn...")
+          for f in os.listdir('.'):
+              if f.endswith('.java'):
+                  shutil.move(f, f'app/src/main/java/com/a32/fixlag/{f}')
+              elif f == 'AndroidManifest.xml':
+                  shutil.move(f, 'app/src/main/AndroidManifest.xml')
+              elif f.endswith('.xml'):
+                  if f in ['strings.xml', 'colors.xml', 'themes.xml', 'styles.xml', 'array.xml', 'ids.xml', 'dimens.xml']:
+                      shutil.move(f, f'app/src/main/res/values/{f}')
+                  elif f.startswith(('activity_', 'fragment_', 'item_', 'dialog_', 'view_')):
+                      shutil.move(f, f'app/src/main/res/layout/{f}')
+                  else:
+                      shutil.move(f, f'app/src/main/res/drawable/{f}')
 
-          echo "Tạo mới file settings.gradle..."
-          echo 'pluginManagement {
+          print("Tạo mới settings.gradle (Không có repositoriesMode)...")
+          with open('settings.gradle', 'w') as f:
+              f.write("""pluginManagement {
               repositories {
                   google()
                   mavenCentral()
@@ -73,23 +64,27 @@ jobs:
               }
           }
           dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
               repositories {
                   google()
                   mavenCentral()
               }
           }
           rootProject.name = "A32-FixLag-Menu"
-          include ":app"' > settings.gradle
+          include ':app'
+          """)
 
-          echo "Tạo mới file build.gradle (Root)..."
-          echo 'plugins {
-              id "com.android.application" version "8.1.1" apply false
-          }' > build.gradle
+          print("Tạo mới root build.gradle...")
+          with open('build.gradle', 'w') as f:
+              f.write("""plugins {
+              id 'com.android.application' version '8.1.1' apply false
+          }
+          """)
 
-          echo "Tạo mới file app/build.gradle..."
-          echo 'plugins {
-              id "com.android.application"
+          print("Tạo mới app/build.gradle...")
+          os.makedirs('app', exist_ok=True)
+          with open('app/build.gradle', 'w') as f:
+              f.write("""plugins {
+              id 'com.android.application'
           }
 
           android {
@@ -107,22 +102,20 @@ jobs:
               buildTypes {
                   release {
                       minifyEnabled false
-                      proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
                   }
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
                   targetCompatibility JavaVersion.VERSION_17
               }
-          }' > app/build.gradle
-
-      - name: 4. Setup Gradle Wrapper 8.5
-        run: |
-          gradle wrapper --gradle-version 8.5
-          chmod +x gradlew
+          }
+          """)
+          print("Hoàn tất cấu trúc lại dự án!")
+          PY_SCRIPT
 
       - name: 5. Build APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: 6. Upload APK Artifact
         uses: actions/upload-artifact@v4
