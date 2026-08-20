@@ -19,6 +19,11 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
+    - name: Setup Gradle 8.5
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: '8.5'
+
     - name: Prepare Android Project Structure & Fix Gradle Files
       run: |
         echo "=== BẮT ĐẦU CẤU TRÚC LẠI DỰ ÁN ANDROID ==="
@@ -55,8 +60,10 @@ jobs:
         [ -f colors.xml ] && mv colors.xml app/src/main/res/values/ || true
         [ -f strings.xml ] && mv strings.xml app/src/main/res/values/ || true
 
-        # 4. Ghi đè file settings.gradle ở Root (Sửa lỗi Gradle 8.x)
+        # 4. Ghi đè file settings.gradle ở Root (Thêm import RepositoriesMode)
         cat << 'EOF' > settings.gradle
+import org.gradle.api.initialization.resolve.RepositoriesMode
+
 pluginManagement {
     repositories {
         google()
@@ -135,101 +142,8 @@ EOF
         echo "=== CẤU TRÚC DỰ ÁN HOÀN THIỆN ==="
         find . -maxdepth 5 -not -path '*/.*'
 
-    - name: Setup Gradle Wrapper
-      run: |
-        gradle wrapper --gradle-version 8.1.1
-
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug --stacktrace
-
-    - name: Upload APK Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: FixLag-A32-Debug-APK
-        path: app/build/outputs/apk/debug/app-debug.apk        mv ShizukuManager.java ShellExecutor.java app/src/main/java/com/a32/fixlag/shizuku/ 2>/dev/null || true
-        mv AppPreferences.java SystemMonitor.java app/src/main/java/com/a32/fixlag/data/ 2>/dev/null || true
-        mv CommandRegistry.java CpuGpuCommands.java DisplayCommands.java RamCommands.java app/src/main/java/com/a32/fixlag/commands/ 2>/dev/null || true
-        mv MainActivity.java DashboardFragment.java MenuFixLagFragment.java app/src/main/java/com/a32/fixlag/ui/ 2>/dev/null || true
-
-        # 3. Di chuyển Manifest và Tài nguyên XML
-        mv AndroidManifest.xml app/src/main/ 2>/dev/null || true
-        mv activity_main.xml fragment_dashboard.xml fragment_menu.xml app/src/main/res/layout/ 2>/dev/null || true
-        mv bottom_nav_menu.xml app/src/main/res/menu/ 2>/dev/null || true
-        mv colors.xml strings.xml app/src/main/res/values/ 2>/dev/null || true
-
-        # 4. Xử lý file build.gradle module app
-        # Nếu có file build.gradle trùng tên, di chuyển 1 file vào app/
-        if [ -f "build (1).gradle" ]; then
-          mv "build (1).gradle" app/build.gradle
-        elif [ ! -f "app/build.gradle" ]; then
-          # Tạo app/build.gradle nếu bị thiếu
-          cat << 'EOF' > app/build.gradle
-plugins {
-    id 'com.android.application'
-}
-
-android {
-    namespace 'com.a32.fixlag'
-    compileSdk 34
-
-    defaultConfig {
-        applicationId "com.a32.fixlag"
-        minSdk 26
-        targetSdk 34
-        versionCode 1
-        versionName "1.0.0"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-    }
-
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
-}
-
-dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.9.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'dev.rikka.shizuku:api:13.1.0'
-    implementation 'dev.rikka.shizuku:provider:13.1.0'
-}
-EOF
-        fi
-
-        # 5. Đảm bảo Root build.gradle tồn tại
-        if [ ! -f "build.gradle" ]; then
-          cat << 'EOF' > build.gradle
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.1'
-    }
-}
-task clean(type: Delete) {
-    delete rootProject.buildDir
-}
-EOF
-        fi
-
-        echo "=== Cấu trúc thư mục sau khi sắp xếp ==="
-        find . -maxdepth 5 -not -path '*/.*'
-
-    - name: Setup Gradle Wrapper
-      run: |
-        gradle wrapper --gradle-version 8.0
-
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug --stacktrace
+    - name: Build Debug APK với Gradle 8.5
+      run: gradle assembleDebug --stacktrace
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
