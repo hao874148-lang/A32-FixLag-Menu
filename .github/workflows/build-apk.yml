@@ -1,7 +1,9 @@
-name: Auto-Fix Structure and Build APK
+name: Build and Fix Android APK
 
 on:
   push:
+    branches: [ "main", "master" ]
+  pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
@@ -10,140 +12,106 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+      - name: 1. Checkout Repository
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - name: 2. Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    - name: Setup Gradle 8.5
-      uses: gradle/actions/setup-gradle@v4
-      with:
-        gradle-version: '8.5'
+      - name: 3. Restructure Project & Fix Gradle Errors
+        run: |
+          echo "Đang tạo cấu trúc thư mục chuẩn của Android..."
+          mkdir -p app/src/main/java/com/a32/fixlag
+          mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/layout
+          mkdir -p app/src/main/res/drawable
+          mkdir -p app/src/main/res/mipmap-hdpi
 
-    - name: Prepare Android Project Structure & Fix Gradle Files
-      run: |
-        echo "=== BẮT ĐẦU CẤU TRÚC LẠI DỰ ÁN ANDROID ==="
-        
-        # 1. Tạo cây thư mục chuẩn
-        mkdir -p app/src/main/java/com/a32/fixlag/commands
-        mkdir -p app/src/main/java/com/a32/fixlag/data
-        mkdir -p app/src/main/java/com/a32/fixlag/shizuku
-        mkdir -p app/src/main/java/com/a32/fixlag/ui
-        mkdir -p app/src/main/res/layout
-        mkdir -p app/src/main/res/menu
-        mkdir -p app/src/main/res/values
+          echo "Đang di chuyển các file nguồn vào đúng vị trí..."
+          # Di chuyển file Java vào package com.a32.fixlag
+          for f in *.java; do
+            [ -f "$f" ] && mv "$f" app/src/main/java/com/a32/fixlag/
+          done
 
-        # 2. Di chuyển các file Java vào đúng Package
-        [ -f Application.java ] && mv Application.java app/src/main/java/com/a32/fixlag/ || true
-        [ -f ShizukuManager.java ] && mv ShizukuManager.java app/src/main/java/com/a32/fixlag/shizuku/ || true
-        [ -f ShellExecutor.java ] && mv ShellExecutor.java app/src/main/java/com/a32/fixlag/shizuku/ || true
-        [ -f AppPreferences.java ] && mv AppPreferences.java app/src/main/java/com/a32/fixlag/data/ || true
-        [ -f SystemMonitor.java ] && mv SystemMonitor.java app/src/main/java/com/a32/fixlag/data/ || true
-        [ -f CommandRegistry.java ] && mv CommandRegistry.java app/src/main/java/com/a32/fixlag/commands/ || true
-        [ -f CpuGpuCommands.java ] && mv CpuGpuCommands.java app/src/main/java/com/a32/fixlag/commands/ || true
-        [ -f DisplayCommands.java ] && mv DisplayCommands.java app/src/main/java/com/a32/fixlag/commands/ || true
-        [ -f RamCommands.java ] && mv RamCommands.java app/src/main/java/com/a32/fixlag/commands/ || true
-        [ -f MainActivity.java ] && mv MainActivity.java app/src/main/java/com/a32/fixlag/ui/ || true
-        [ -f DashboardFragment.java ] && mv DashboardFragment.java app/src/main/java/com/a32/fixlag/ui/ || true
-        [ -f MenuFixLagFragment.java ] && mv MenuFixLagFragment.java app/src/main/java/com/a32/fixlag/ui/ || true
+          # Di chuyển AndroidManifest.xml
+          if [ -f "AndroidManifest.xml" ]; then
+            mv AndroidManifest.xml app/src/main/
+          fi
 
-        # 3. Di chuyển Manifest & Tài nguyên XML
-        [ -f AndroidManifest.xml ] && mv AndroidManifest.xml app/src/main/ || true
-        [ -f activity_main.xml ] && mv activity_main.xml app/src/main/res/layout/ || true
-        [ -f fragment_dashboard.xml ] && mv fragment_dashboard.xml app/src/main/res/layout/ || true
-        [ -f fragment_menu.xml ] && mv fragment_menu.xml app/src/main/res/layout/ || true
-        [ -f bottom_nav_menu.xml ] && mv bottom_nav_menu.xml app/src/main/res/menu/ || true
-        [ -f colors.xml ] && mv colors.xml app/src/main/res/values/ || true
-        [ -f strings.xml ] && mv strings.xml app/src/main/res/values/ || true
+          # Di chuyển các file XML tài nguyên
+          for f in *.xml; do
+            if [ "$f" == "AndroidManifest.xml" ]; then continue; fi
+            if [ -f "$f" ]; then
+              # Phân loại XML vào thư mục res tương ứng
+              case "$f" in
+                strings.xml|colors.xml|themes.xml|styles.xml|array.xml|ids.xml|dimens.xml)
+                  mv "$f" app/src/main/res/values/
+                  ;;
+                activity_*.xml|fragment_*.xml|item_*.xml|dialog_*.xml|view_*.xml)
+                  mv "$f" app/src/main/res/layout/
+                  ;;
+                *)
+                  mv "$f" app/src/main/res/drawable/
+                  ;;
+              esac
+            fi
+          done
 
-        # 4. Tạo file settings.gradle tối giản chuẩn Android
-        cat << 'EOF' > settings.gradle
-pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}
-dependencyResolutionManagement {
-    repositories {
-        google()
-        mavenCentral()
-        maven { url 'https://jitpack.io' }
-    }
-}
-rootProject.name = "A32-FixLag-Menu"
-include ':app'
-EOF
+          echo "Đang ghi đè settings.gradle để loại bỏ lỗi Groovy DSL..."
+          cat <<EOF > settings.gradle
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "A32-FixLag-Menu"
+          include ':app'
+          EOF
 
-        # 5. Tạo Root build.gradle
-        cat << 'EOF' > build.gradle
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.1'
-    }
-}
-task clean(type: Delete) {
-    delete rootProject.buildDir
-}
-EOF
+          echo "Đang cấu hình lại build.gradle cho App Module..."
+          # Nếu app/build.gradle không tồn tại nhưng có build.gradle ở root, ta chuyển nó vào app/
+          if [ ! -f "app/build.gradle" ] && [ -f "build.gradle" ]; then
+            mv build.gradle app/build.gradle
+          fi
+          
+          # Đảm bảo AGP sử dụng phiên bản 8.1.1 tương thích
+          if [ -f "app/build.gradle" ]; then
+            sed -i 's/com.android.tools.build:gradle:[^ ]*/com.android.tools.build:gradle:8.1.1/' app/build.gradle
+            sed -i 's/id "com.android.application" version "[^"]*"/id "com.android.application" version "8.1.1"/g' app/build.gradle
+          fi
 
-        # 6. Tạo app/build.gradle
-        cat << 'EOF' > app/build.gradle
-plugins {
-    id 'com.android.application'
-}
+          # Tạo root build.gradle nếu nó bị mất hoặc chuyển nhầm
+          if [ ! -f "build.gradle" ]; then
+            cat <<EOF > build.gradle
+          plugins {
+              id 'com.android.application' version '8.1.1' apply false
+          }
+          EOF
+          fi
 
-android {
-    namespace 'com.a32.fixlag'
-    compileSdk 34
+      - name: 4. Setup Gradle Wrapper 8.5
+        # Khởi tạo wrapper phiên bản 8.5 tương thích hoàn toàn với AGP 8.1.1
+        run: |
+          gradle wrapper --gradle-version 8.5
+          chmod +x gradlew
 
-    defaultConfig {
-        applicationId "com.a32.fixlag"
-        minSdk 26
-        targetSdk 34
-        versionCode 1
-        versionName "1.0.0"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-    }
+      - name: 5. Build APK
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
-}
-
-dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.9.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'dev.rikka.shizuku:api:13.1.0'
-    implementation 'dev.rikka.shizuku:provider:13.1.0'
-}
-EOF
-
-        echo "=== BẢN ĐỒ THƯ MỤC SAN BẰNG DỰ ÁN HOÀN THIỆN ==="
-        find . -maxdepth 5 -not -path '*/.*'
-
-    - name: Build Debug APK
-      run: gradle assembleDebug --stacktrace
-
-    - name: Upload APK Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: FixLag-A32-Debug-APK
-        path: app/build/outputs/apk/debug/app-debug.apk
+      - name: 6. Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: A32-FixLag-Menu-Debug-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: warn
