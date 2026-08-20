@@ -1,4 +1,4 @@
-name: Auto-Structure and Build APK
+name: Auto-Fix Structure and Build APK
 
 on:
   push:
@@ -19,9 +19,9 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Reorganize Flat Files to Android Project Structure
+    - name: Prepare Android Project Structure & Fix Gradle Files
       run: |
-        echo "=== Tự động sắp xếp cấu trúc thư mục Android ==="
+        echo "=== BẮT ĐẦU CẤU TRÚC LẠI DỰ ÁN ANDROID ==="
         
         # 1. Tạo cây thư mục chuẩn
         mkdir -p app/src/main/java/com/a32/fixlag/commands
@@ -32,9 +32,121 @@ jobs:
         mkdir -p app/src/main/res/menu
         mkdir -p app/src/main/res/values
 
-        # 2. Di chuyển các file Java vào package phù hợp
-        mv Application.java app/src/main/java/com/a32/fixlag/ 2>/dev/null || true
-        mv ShizukuManager.java ShellExecutor.java app/src/main/java/com/a32/fixlag/shizuku/ 2>/dev/null || true
+        # 2. Di chuyển các file Java vào đúng Package
+        [ -f Application.java ] && mv Application.java app/src/main/java/com/a32/fixlag/ || true
+        [ -f ShizukuManager.java ] && mv ShizukuManager.java app/src/main/java/com/a32/fixlag/shizuku/ || true
+        [ -f ShellExecutor.java ] && mv ShellExecutor.java app/src/main/java/com/a32/fixlag/shizuku/ || true
+        [ -f AppPreferences.java ] && mv AppPreferences.java app/src/main/java/com/a32/fixlag/data/ || true
+        [ -f SystemMonitor.java ] && mv SystemMonitor.java app/src/main/java/com/a32/fixlag/data/ || true
+        [ -f CommandRegistry.java ] && mv CommandRegistry.java app/src/main/java/com/a32/fixlag/commands/ || true
+        [ -f CpuGpuCommands.java ] && mv CpuGpuCommands.java app/src/main/java/com/a32/fixlag/commands/ || true
+        [ -f DisplayCommands.java ] && mv DisplayCommands.java app/src/main/java/com/a32/fixlag/commands/ || true
+        [ -f RamCommands.java ] && mv RamCommands.java app/src/main/java/com/a32/fixlag/commands/ || true
+        [ -f MainActivity.java ] && mv MainActivity.java app/src/main/java/com/a32/fixlag/ui/ || true
+        [ -f DashboardFragment.java ] && mv DashboardFragment.java app/src/main/java/com/a32/fixlag/ui/ || true
+        [ -f MenuFixLagFragment.java ] && mv MenuFixLagFragment.java app/src/main/java/com/a32/fixlag/ui/ || true
+
+        # 3. Di chuyển Manifest & Tài nguyên XML
+        [ -f AndroidManifest.xml ] && mv AndroidManifest.xml app/src/main/ || true
+        [ -f activity_main.xml ] && mv activity_main.xml app/src/main/res/layout/ || true
+        [ -f fragment_dashboard.xml ] && mv fragment_dashboard.xml app/src/main/res/layout/ || true
+        [ -f fragment_menu.xml ] && mv fragment_menu.xml app/src/main/res/layout/ || true
+        [ -f bottom_nav_menu.xml ] && mv bottom_nav_menu.xml app/src/main/res/menu/ || true
+        [ -f colors.xml ] && mv colors.xml app/src/main/res/values/ || true
+        [ -f strings.xml ] && mv strings.xml app/src/main/res/values/ || true
+
+        # 4. Ghi đè file settings.gradle ở Root (Sửa lỗi Gradle 8.x)
+        cat << 'EOF' > settings.gradle
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOSITORIES)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+}
+rootProject.name = "A32-FixLag-Menu"
+include ':app'
+EOF
+
+        # 5. Tạo Root build.gradle
+        cat << 'EOF' > build.gradle
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.1.1'
+    }
+}
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+EOF
+
+        # 6. Tạo app/build.gradle (Module Build File)
+        cat << 'EOF' > app/build.gradle
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.a32.fixlag'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.a32.fixlag"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.9.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'dev.rikka.shizuku:api:13.1.0'
+    implementation 'dev.rikka.shizuku:provider:13.1.0'
+}
+EOF
+
+        echo "=== CẤU TRÚC DỰ ÁN HOÀN THIỆN ==="
+        find . -maxdepth 5 -not -path '*/.*'
+
+    - name: Setup Gradle Wrapper
+      run: |
+        gradle wrapper --gradle-version 8.1.1
+
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug --stacktrace
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: FixLag-A32-Debug-APK
+        path: app/build/outputs/apk/debug/app-debug.apk        mv ShizukuManager.java ShellExecutor.java app/src/main/java/com/a32/fixlag/shizuku/ 2>/dev/null || true
         mv AppPreferences.java SystemMonitor.java app/src/main/java/com/a32/fixlag/data/ 2>/dev/null || true
         mv CommandRegistry.java CpuGpuCommands.java DisplayCommands.java RamCommands.java app/src/main/java/com/a32/fixlag/commands/ 2>/dev/null || true
         mv MainActivity.java DashboardFragment.java MenuFixLagFragment.java app/src/main/java/com/a32/fixlag/ui/ 2>/dev/null || true
