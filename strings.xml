@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FixLag A32 VIP Pro Max</string>
+
+    <!-- Navigation -->
+    <string name="nav_dashboard">Giám Sát Telemetry</string>
+    <string name="nav_menu">Trung Tâm Tối Ưu</string>
+
+    <!-- Shizuku Header -->
+    <string name="shizuku_status_checking">Đang kết nối Shizuku ADB...</string>
+    <string name="btn_grant_adb">Cấp Quyền ADB</string>
+
+    <!-- Dashboard -->
+    <string name="device_title">SAMSUNG A32 4G (HELIO G80)</string>
+    <string name="dashboard_subtitle">Giám Sát Phần Cứng Realtime</string>
+    <string name="ai_autopilot_title">AI AUTO-PILOT ENGINE 3.0</string>
+    <string name="ai_autopilot_desc">Tự động co giãn 720p/1080p, 90Hz &amp; nén RAM ngầm</string>
+    <string name="btn_quick_clean_ram">Dọn RAM VIP 3 Lớp</string>
+    <string name="btn_quick_turbo_game">Game Turbo 90Hz</string>
+    <string name="terminal_log_title">NHẬT KÝ THỰC THI SHIZUKU ADB (LOGS):</string>
+
+    <!-- Menu Page -->
+    <string name="menu_title">TRUNG TÂM TINH CHỈNH VIP PRO MAX</string>
+    <string name="profile_section_title">KỊCH BẢN HỆ THỐNG VIP PRO MAX</string>
+    <string name="refresh_rate_section_title">TẦN SỐ QUÉT MÀN HÌNH (SUPER AMOLED)</string>
+    <string name="resolution_section_title">MA TRẬN ĐỘ PHÂN GIẢI (20:9 MATRIX)</string>
+    <string name="gos_section_title">SAMSUNG GOS &amp; KHÔI PHỤC HỆ THỐNG</string>
+    <string name="btn_apply_profile">Kích Hoạt Kịch Bản VIP</string>
+    <string name="btn_disable_gos">Vô Hiệu Hóa Samsung GOS Throttling</string>
+    <string name="btn_restore_default">Khôi Phục Thiết Lập Gốc Nhà Sản Xuất</string>
+</resources>

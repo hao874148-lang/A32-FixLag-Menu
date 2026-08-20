@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mùa nền chính AMOLED Dark Theme -->
+    <color name="bg_main_dark">#0A0C14</color>
+    <color name="bg_card_dark">#121624</color>
+    <color name="bg_card_highlight">#1C2236</color>
+
+    <!-- Màu Accent Cyberpunk Neon -->
+    <color name="neon_cyan">#00F0FF</color>
+    <color name="neon_green">#00FF88</color>
+    <color name="neon_purple">#A100FF</color>
+    <color name="neon_red">#FF0055</color>
+    <color name="neon_gold">#FFD700</color>
+    <color name="neon_orange">#FF6600</color>
+
+    <!-- Màu chữ hiển thị -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#94A3B8</color>
+    <color name="text_muted">#64748B</color>
+
+    <!-- Trạng thái hệ thống -->
+    <color name="status_good">#00FF88</color>
+    <color name="status_warning">#FF6600</color>
+    <color name="status_danger">#FF0055</color>
+</resources>
